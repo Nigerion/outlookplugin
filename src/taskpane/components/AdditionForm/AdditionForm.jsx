@@ -8,10 +8,10 @@ const AdditionForm = ({}) => {
   const [info, setInfo] = useState(false);
   const [data, setData] = useState("");
   const [meet, setMeet] = useState("Встреча создана");
-  useEffect(() => {
-    tokenRefresh();
-    initializeApp();
-  }, []);
+  // useEffect(() => {
+  //   tokenRefresh();
+  //   initializeApp();
+  // }, []);
   const handleSubmit = () => {
     if (buttonText === "Сгенерировать ссылку") {
       createNewMeeting(setData);
