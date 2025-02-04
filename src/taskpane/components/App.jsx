@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { makeStyles } from "@fluentui/react-components";
 import { AuthorizationForm } from "./AuthorizationForm/AuthorizationForm.jsx";
 import AdditionForm from "./AdditionForm/AdditionForm.jsx";
-import { getCookie, clearCookies, tokenRefresh, initializeApp } from "./utils.js";
+import { clearCookies, getCookie, tokenRefresh } from "./utils.js";
 
 const useStyles = makeStyles({
   title: {
@@ -12,7 +12,7 @@ const useStyles = makeStyles({
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    height: "700px",
+    height: "800px",
   },
   logo: {
     height: "200px",
@@ -29,11 +29,9 @@ const App = () => {
     const refresh = getCookie("refresh");
     if (token && refresh) {
       setIsAuth(true);
-    } else {
-      tokenRefresh();
-      initializeApp();
     }
-  }, []);
+    setInterval(tokenRefresh, 5 * 300000);
+  });
   const handleSubmit = () => {
     clearCookies();
   };

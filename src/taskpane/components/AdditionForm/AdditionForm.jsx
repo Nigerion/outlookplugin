@@ -1,25 +1,55 @@
 import React, { useEffect, useState } from "react";
 import Button from "../Button/Button";
 import { InfoMeet } from "../InfoMeet/InfoMeet";
-import { tokenRefresh, getCookie, updateMeeting, createNewMeeting, initializeApp } from "../utils";
+import {
+  createNewMeeting,
+  extractMeetingId,
+  getCookie,
+  getFormEndTime,
+  getFormLocation,
+  getFormStartTime,
+  getFormSubject,
+  getMeetingBody,
+  tokenRefresh,
+  updateMeeting,
+} from "../utils";
 
 const AdditionForm = ({}) => {
   const [buttonText, setButtonText] = useState("Сгенерировать ссылку");
   const [info, setInfo] = useState(false);
-  const [data, setData] = useState("");
   const [meet, setMeet] = useState("Встреча создана");
-  // useEffect(() => {
-  //   tokenRefresh();
-  //   initializeApp();
-  // }, []);
+
+  const [subjectField, setSubjectField] = useState("");
+  const [startTimeField, setStartTimeField] = useState("");
+  const [endTimeField, setEndTimeField] = useState("");
+  // const [bodyField, setBodyField] = useState("");
+  // const [locationField, setLocationField] = useState("");
+  const [confId, setConfId] = useState("");
+  let confDescription = "Описание отсутсвует";
+
+  function updateFields() {
+    getFormSubject(setSubjectField);
+    // getFormLocation(setLocationField); //не нужно
+    getFormEndTime(setEndTimeField);
+    getFormStartTime(setStartTimeField);
+    // getMeetingBody(setBodyField);
+  }
+
+  useEffect(() => {
+    setInterval(updateFields, 1000);
+    setInterval(tokenRefresh, 5 * 300000);
+  }, []);
+
   const handleSubmit = () => {
+    updateFields();
     if (buttonText === "Сгенерировать ссылку") {
-      createNewMeeting(setData);
+      createNewMeeting(setConfId, subjectField, confDescription, startTimeField, endTimeField);
+
       setButtonText("Обновить встречу");
       setInfo(true);
     } else if (buttonText === "Обновить встречу") {
       setMeet("Встреча обновлена");
-      updateMeeting(setData);
+      updateMeeting(setConfId, subjectField, confDescription, startTimeField, endTimeField, confId);
     }
   };
   return (
@@ -32,7 +62,17 @@ const AdditionForm = ({}) => {
           Для создания ссылки на видеовстречу заполните данные в форме с информацией о событии (тема, время)
         </p>
       </div>
-      {info === false ? "" : <InfoMeet datas={data} meet={meet}></InfoMeet>}
+      {info === false ? (
+        ""
+      ) : (
+        <InfoMeet
+          meet={meet}
+          subjectField={subjectField}
+          startTimeField={startTimeField}
+          endTimeField={endTimeField}
+          confId={confId}
+        ></InfoMeet>
+      )}
 
       <Button textButton={buttonText} onClick={handleSubmit} />
     </>

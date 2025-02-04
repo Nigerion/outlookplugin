@@ -1,12 +1,3 @@
-let subjectField = "OutlookPlugin generated conference";
-let confDescription = "Описание отсутсвует";
-let locationField = "";
-let confId = null;
-let startTimeField = null;
-let bodyField = "";
-let endTimeField = null;
-const token = getCookie("token");
-
 function setCookie(name, value, minutes) {
   const date = new Date();
   date.setTime(date.getTime() + minutes * 60 * 60 * 1000); // Устанавливаем срок на сутки
@@ -25,107 +16,89 @@ export function getCookie(name) {
   return null;
 }
 
-export function authenticateUser(username, password, setIsAuth) {
+export function clearCookies() {
+  setCookie("token", "", -1);
+  setCookie("refresh", "", -1);
+  window.location.reload(true);
+}
+// авторизация
+export function authorization(username, password, setIsAuth) {
   const url = "https://vision.api-factory.ru/api/v1/users/auth/providers/keycloak/login/";
-  const xhr = new XMLHttpRequest();
-
-  xhr.open("POST", url, true);
-  xhr.setRequestHeader("Content-Type", "application/json");
-  xhr.onreadystatechange = function () {
-    if (xhr.readyState === 4) {
-      if (xhr.status === 200) {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          if (data.user && data.user.accessToken && data.user.refreshToken && data.user.email) {
-            setCookie("token", data.user.accessToken, 30);
-            setCookie("refresh", data.user.refreshToken, 30);
-            setCookie("user", data.user.email, 30);
-            window.location.reload();
-            setIsAuth(true);
-          }
-        } catch (error) {
-          console.error("Ошибка при обработке ответа:", error);
-          
-        }
-      } else {
-        console.error("Ошибка аутентификации:", xhr.status);
-
-      }
-    }
-  };
-  const requestBody = JSON.stringify({
+  const data = {
     email: username,
     password: password,
-  });
-  xhr.send(requestBody);
-  setIsAuth(true);
+  };
+
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Ошибка авторизации");
+      }
+      return response.json();
+    })
+    .then((data) => {
+      if (data.user && data.user.accessToken && data.user.refreshToken && data.user.email) {
+        setCookie("token", data.user.accessToken, 30);
+        setCookie("refresh", data.user.refreshToken, 30);
+        setCookie("user", data.user.email, 30);
+        setIsAuth(true);
+      } else {
+        throw new Error("Ошибка авторизации");
+      }
+    })
+    .catch((error) => {
+      console.error("Ошибка:", error);
+    });
 }
 
 export function tokenRefresh() {
-  console.log("Token refresh");
   setCookie("token", "", -1);
-  const xhr = new XMLHttpRequest();
   const url = "https://vision.api-factory.ru/api/v1/users/auth/token/refresh/";
   const token = getCookie("token");
   const refresh = getCookie("refresh");
-  xhr.open("POST", url, true);
-  xhr.setRequestHeader("Authorization", "Bearer " + token);
-  xhr.setRequestHeader("Content-Type", "application/json");
-  const data = JSON.stringify({
-    refresh: refresh,
-  });
-  xhr.onreadystatechange = function () {
-    console.log(xhr.responseText);
-    if (xhr.readyState === 4) {
-      if (xhr.status === 200) {
-        try {
-          const data = JSON.parse(xhr.responseText);
-          if (data && data.access) {
-            console.info("New token " + data.access);
-            setCookie("token", data.access, 30);
-          }
-        } catch (error) {
-          console.error("Ошибка при обработке ответа:", error);
-        }
-      }
-    }
-  };
 
-  xhr.send(data);
+  fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ refresh: refresh }),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Ошибка обновления токена");
+      }
+      return response.json();
+    })
+    .then((data) => {
+      if (data && data.access) {
+        setCookie("token", data.access, 30);
+        console.log("gg");
+      }
+    })
+    .catch((error) => {
+      console.error("Ошибка при обработке ответа:", error);
+    });
 }
 
-function getFormSubject(callback) {
+export function getFormSubject(callback) {
   Office.context.mailbox.item.subject.getAsync(function (asyncResult) {
     if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
       const subject = asyncResult.value;
-      if (subject !== null && subject.trim() !== "") {
-        callback(subject);
-      }
+      callback(subject || "Meeting");
     }
   });
 }
-//получить тело собрания
-function getMeetingBody(callback) {
-  Office.context.mailbox.item.body.getAsync("html", function (asyncResult) {
-    if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
-      const body = asyncResult.value;
-      callback(body);
-    } else {
-      console.error("Error retrieving body text: " + asyncResult.error.message);
-    }
-  });
-}
-// получить местонахождение формы
-function getFormLocation(callback) {
-  Office.context.mailbox.item.location.getAsync(function (asyncResult) {
-    if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
-      const location = asyncResult.value;
-      callback(location);
-    }
-  });
-}
+
 //получить время запуска формы
-function getFormStartTime(callback) {
+export function getFormStartTime(callback) {
   Office.context.mailbox.item.start.getAsync(function (asyncResult) {
     if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
       const startTime = new Date(asyncResult.value);
@@ -134,7 +107,7 @@ function getFormStartTime(callback) {
   });
 }
 //получить время окончания формы
-function getFormEndTime(callback) {
+export function getFormEndTime(callback) {
   Office.context.mailbox.item.end.getAsync(function (asyncResult) {
     if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
       const endTime = new Date(asyncResult.value);
@@ -142,33 +115,73 @@ function getFormEndTime(callback) {
     }
   });
 }
-function processSubject(subject) {
-  updateMeeting();
-  subjectField = subject;
+
+function insertTextMeetBody(link) {
+  Office.context.mailbox.item.body.getAsync("html", function (asyncResult) {
+    if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
+      const bodyHtml = asyncResult.value;
+      const newBodyHtml = bodyHtml + link;
+      Office.context.mailbox.item.body.setAsync(newBodyHtml, { coercionType: "html" }, function (asyncResult) {
+        if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
+          console.log("Ссылка добавлена успешно.");
+        } else {
+          console.error("Ошибка добавления ссылки: " + asyncResult.error.message);
+        }
+      });
+    } else {
+      console.error("Ошибка получения тела письма: " + asyncResult.error.message);
+    }
+  });
 }
-// процес тела
-function processBody(body) {
-  bodyField = body;
+
+export function setDefaultSubject(subjectField) {
+  Office.context.mailbox.item.subject.setAsync(subjectField, function (asyncResult) {
+    if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
+      console.log("Название встречи установлено успешно.");
+    } else {
+      console.error("Ошибка установки названия встречи: " + asyncResult.error.message);
+    }
+  });
 }
-//процес нахождения
-function processLocation(location) {
-  updateMeeting();
-  locationField = location;
+
+export function updateMeeting(setConfId, subjectField, confDescription, startTimeField, endTimeField, confId) {
+  const url = `https://vision.api-factory.ru/api/v1/conferences/`;
+  const token = getCookie("token");
+  const data = JSON.stringify({
+    id: confId,
+    title: subjectField,
+    description: confDescription,
+    started_at: startTimeField,
+    ended_at: endTimeField,
+  });
+
+  fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: data,
+  })
+    .then((response) => {
+      if (response.ok) {
+        return response.json();
+      } else {
+        throw new Error(`Ошибка обновления встречи: ${response.status}`);
+      }
+    })
+    .then((data) => {
+      setConfId(data.id);
+      const meetingUrl = `https://vision.api-factory.ru/meeting/${data.id}`;
+      updateLocationField(meetingUrl);
+      setDefaultSubject(subjectField);
+    })
+    .catch((error) => console.error("Ошибка при обновлении встречи:", error));
 }
-//время запуска
-function processStartTime(startTime) {
-  updateMeeting();
-  startTimeField = startTime;
-}
-//время окончания
-function processEndTime(endTime) {
-  updateMeeting();
-  endTimeField = endTime;
-}
-function extractMeetingId(text) {
+
+export function extractMeetingId(text) {
   const urlRegex = /https:\/\/vision\.api-factory\.ru\/meeting\/([a-f0-9\-]+)/i;
   const match = text.match(urlRegex);
-
   if (match && match[1]) {
     return match[1];
   } else {
@@ -176,37 +189,17 @@ function extractMeetingId(text) {
   }
 }
 
-function updateFields() {
-  getFormSubject(processSubject);
-  getFormLocation(processLocation);
-  getFormEndTime(processEndTime);
-  getFormStartTime(processStartTime);
-  getMeetingBody(processBody);
-  confId = extractMeetingId(locationField);
-  confId = extractMeetingId(bodyField);
+function updateLocationField(location) {
+  Office.context.mailbox.item.location.setAsync(location, function (asyncResult) {
+    if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
+      console.log("Location updated successfully.");
+    } else {
+      console.error("Error updating location: " + asyncResult.error.message);
+    }
+  });
 }
 
-export function initializeApp() {
-  Office.onReady(function (info) {
-    if (info.host === Office.HostType.Outlook) {
-      console.log("Host is Outlook");
-      setInterval(updateFields, 1000);
-    } else {
-      console.log("Host is not Outlook");
-    }
-  });
-}
-function insertTextMeetBody(text) {
-  console.log("Start insertConferenceLink");
-  Office.context.mailbox.item.body.setAsync(text, { coercionType: "html" }, function (asyncResult) {
-    if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
-      console.log("Invitation text with link inserted successfully.");
-    } else {
-      console.error("Error inserting invitation text: " + asyncResult.error.message);
-    }
-  });
-}
-export function createNewMeeting(setData) {
+export function createNewMeeting(setConfId, subjectField, confDescription, startTimeField, endTimeField) {
   console.log("Create new meeting");
   const xhr = new XMLHttpRequest();
   const token = getCookie("token");
@@ -226,12 +219,13 @@ export function createNewMeeting(setData) {
       console.log("Meeting created successfully:", xhr.responseText);
       try {
         const data = JSON.parse(xhr.responseText);
+        console.log(data);
         if (data && data.id) {
-          confId = data.id;
-          link = "https://vision.api-factory.ru/meeting/" + data.id;
-          insertTextMeetBody("<br><br>Ссылка для подключения:<br>" + link);
-          updateMeetingLocation(link);
-          setData(data);
+          setConfId(data.id);
+          setDefaultSubject(subjectField);
+          const meetingUrl = `https://vision.api-factory.ru/meeting/${data.id}`;
+          updateLocationField(meetingUrl);
+          insertTextMeetBody("<br><br>Ссылка для подключения:<br>" + meetingUrl);
         }
       } catch (error) {
         console.error("Ошибка при обработке ответа:", error);
@@ -240,15 +234,7 @@ export function createNewMeeting(setData) {
   };
   xhr.send(data);
 }
-function updateMeetingLocation(locationText) {
-  Office.context.mailbox.item.location.setAsync(locationText, function (asyncResult) {
-    if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
-      console.log("Location updated successfully.");
-    } else {
-      console.error("Error updating location: " + asyncResult.error.message);
-    }
-  });
-}
+
 export function formatDateDay(dateString) {
   const date = new Date(dateString);
   return date.toLocaleDateString("ru-RU", {
@@ -260,37 +246,4 @@ export function formatDateDay(dateString) {
 export function formatDateHour(dateString) {
   const date = new Date(dateString);
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
-
-export function updateMeeting(setData) {
-  const xhr = new XMLHttpRequest();
-  const url = "https://vision.api-factory.ru/api/v1/conferences/";
-  const data = JSON.stringify({
-    id: confId,
-    title: subjectField,
-    description: confDescription,
-    started_at: startTimeField,
-    ended_at: endTimeField,
-  });
-
-  xhr.open("PUT", url, true);
-  xhr.setRequestHeader("Content-Type", "application/json");
-  xhr.setRequestHeader("Authorization", "Bearer " + token);
-  xhr.onreadystatechange = function () {
-    if (xhr.readyState === 4 && xhr.status === 200) {
-      const data = JSON.parse(xhr.responseText);
-      if (data.id) {
-        link = "https://vision.api-factory.ru/meeting/" + data.id;
-        updateMeetingLocation(link);
-        setData(data);
-      }
-    }
-  };
-  xhr.send(data);
-}
-
-export function clearCookies() {
-  setCookie("token", "", -1);
-  setCookie("refresh", "", -1);
-  window.location.reload(true);
 }

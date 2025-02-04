@@ -10,12 +10,8 @@ const useStyles = makeStyles({
     borderRadius: "5px",
     cursor: "pointer",
   },
-
-  // button:hover {
-  //     backgroundColor: "#1a1a1a",
-  // }
 });
-// import styles from "./style.module.css";
+
 const style = {
   backgroundColor: "#3d3d3d",
   color: "white",

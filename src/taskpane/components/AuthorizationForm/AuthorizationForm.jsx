@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { Input } from "../Input/Input";
 import Button from "../Button/Button";
-import { authenticateUser } from "../utils";
+import { authorization } from "../utils";
+
 export const AuthorizationForm = ({ setIsAuth }) => {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const handleSubmit = () => {
     if (login && password) {
-      // setIsAuth(true);
-      authenticateUser(login, password, setIsAuth);
+      authorization(login, password, setIsAuth);
     } else {
       console.log("Введите логин и пароль.");
     }
